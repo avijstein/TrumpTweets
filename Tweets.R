@@ -1,2 +1,50 @@
 # Data Crunching #
+library(tidyverse)
+library(lubridate)
 
+clean_plot =  theme(axis.line = element_line(colour = "blue"), panel.grid.major = element_blank(),
+                    panel.grid.minor = element_blank(), panel.border = element_blank(),
+                    panel.background = element_blank(), legend.key = element_blank())
+
+
+tweets = read.csv('TrumpTweets.csv', stringsAsFactors = F)
+
+tweets$Date = ymd(tweets$Date)
+tweets$Time = strptime(tweets$Time, format = '%H:%M:%S')
+tweets$Time = hms(tweets$Time)
+
+# seeing what hour Trump tweets at.
+ggplot(data = tweets[1:1000,]) +
+  geom_point(aes(x = Date, y = Retweets)) +
+  clean_plot
+
+
+# grepping for exclamation points
+exclaim = (gregexpr(pattern = "!", text = tweets$Tweet_Text))
+numexclaim = c()
+# because I'm python trash and use for loops as defaults. learn dplyr, geez.
+for (i in 1:length(exclaim)){
+  if (sum(exclaim[[i]]) == -1){
+    numexclaim[i] = 0
+  }else{
+    numexclaim[i] = length(exclaim[[i]])
+  }
+}
+
+exclaimtweets = data.frame(tweets$Tweet_Text[1:length(exclaim)], numexclaim, tweets$Retweets[1:length(exclaim)])
+names(exclaimtweets) = c('text', 'count', 'retweets')
+
+# graphing the number of retweets against the number of exclamation points in the tweet.
+ggplot(data = exclaimtweets) +
+  geom_point(aes(x = count, y = retweets)) +
+  clean_plot
+
+
+exclaimtweets[exclaimtweets$count > 10,]
+
+
+##### OBSERVATIONS #####
+
+# There are a few tweets, I believe right after Trump was elected, that there's an order of magnitude 
+# more retweets/favorites. In coming analyses, I might want to exclude this points so they don't skew the 
+# analysis and presentation of the data.
