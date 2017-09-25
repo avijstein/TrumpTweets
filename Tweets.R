@@ -17,17 +17,48 @@ test = tweets[,c(1:3)]
 test$dt = paste(test$Date, test$Time)
 test$dt = strptime(test$dt, format = '%y-%m-%d %H:%M:%S')
 test$Time = strptime(test$Time, format = '%H:%M:%S')
-test$hour_cut = cut(test$Time, breaks = 'hour') # this is so wrong, setting it to today's date
-test$month_cut = cut(test$dt, breaks = 'month')
+test$month_cut = cut(test$dt, breaks = 'month', labels = F)
+test$hour_cut = NA
+# test$hour_cut = cut(test$Time, breaks = 'hour') # this is so wrong, it's setting it to today's date
 # test$hour_cut = as.Date(test$hour_cut, format = '%y-%m-%d %H:%M:%S')
 
-hours = data.frame(table(test$hour_cut))
-hours$Var1 = as.integer(hours$Var1)
-names(hours) = c('hour', 'count')
+# I need to find a dplyr method or apply method for this process because for loops are pretty weak.
+fulltimecut = data.frame()
+for (i in unique(test$month_cut)){
+  if (is.na(i)){next}
+  print(i)
+  hold = test[test$month_cut == i, c('Time', 'dt', 'month_cut', 'hour_cut')]
+  hold$hour_cut = cut(hold$Time, breaks = 'hour', labels = F)
+  fulltimecut = rbind(fulltimecut, hold)
+}
 
-months = data.frame(table(test$month_cut))
-months$Var1 = as.integer(months$Var1)
-names(months) = c('month', 'count')
+# I don't know why, but this process is converting some values to NAs. I'm dropping them to get preliminary
+# results, but I'll need to come back and figure this out.
+fulltimecut = fulltimecut[!is.na(fulltimecut$hour_cut),]
+
+comptimecut = data.frame()
+for (i in unique(fulltimecut$month_cut)){
+  hold = data.frame(table(fulltimecut[fulltimecut$month_cut == i,]$hour_cut))
+  hold$Var1 = as.integer(hold$Var1)
+  names(hold) = c('hours', 'count')
+  hold$month = i
+  comptimecut = rbind(comptimecut, hold)
+}
+
+Months = factor(fulltimecut$month_cut)
+# okay, got a plot breaking it down by month, but it's not that descriptive. It's kinda there.
+ggplot() +
+  geom_rect(aes(xmin = 0.5, xmax = 7, ymin=0, ymax=Inf), alpha = 1, fill = 'grey') +
+  geom_rect(aes(xmin = 19, xmax = 24.5, ymin=0, ymax=Inf), alpha = 1, fill = 'grey') +
+  geom_bar(data = fulltimecut, aes(x = hour_cut, fill = Months)) +
+  labs(x = 'Hours', y = 'Count', title = 'Trump Tweets each Hour by Month') +
+  clean_plot
+
+comp_hours = data.frame(table(fulltimecut$hour_cut))
+comp_hours$Var1 = as.integer(comp_hours$Var1)
+names(comp_hours) = c('hours', 'count')
+comp_hours2 = merge(comp_hours, fulltimecut[,c('hour_cut', 'month_cut')], by.x = 'hours', by.y = 'hour_cut',
+                    all = T)
 
 # first plot of tweets per hour, hopefully will get month variations soon
 ggplot() +
@@ -44,6 +75,7 @@ ggplot(data = tweets[1:1000,]) +
   geom_point(aes(x = Date, y = Retweets)) +
   clean_plot
 
+##### EXCLAMATION POINTS #####
 
 # grepping for exclamation points
 exclaim = (gregexpr(pattern = "!", text = tweets$Tweet_Text))
