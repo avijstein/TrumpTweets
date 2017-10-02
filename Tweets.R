@@ -1,6 +1,8 @@
 # Data Crunching #
-library(tidyverse)
+library(tidyverse) # does this not include dplyr???
 library(lubridate)
+library(dplyr)
+library(ggplot2)
 
 clean_plot =  theme(axis.line = element_line(colour = "blue"), panel.grid.major = element_blank(),
                     panel.grid.minor = element_blank(), panel.border = element_blank(),
@@ -9,8 +11,8 @@ clean_plot =  theme(axis.line = element_line(colour = "blue"), panel.grid.major 
 
 tweets = read.csv('TrumpTweets.csv', stringsAsFactors = F)
 
-tweets$Date = ymd(tweets$Date)
-tweets$Time = strptime(tweets$Time, format = '%H:%M:%S')
+# tweets$Date = ymd(tweets$Date)
+# tweets$Time = strptime(tweets$Time, format = '%H:%M:%S')
 # tweets$Time = hms(tweets$Time)
 
 test = tweets[,c(1:3)]
@@ -53,7 +55,7 @@ ggplot() +
   geom_bar(data = fulltimecut, aes(x = hour_cut, fill = Months)) +
   labs(x = 'Hours', y = 'Count', title = 'Trump Tweets each Hour by Month') +
   clean_plot
-
+ 
 comp_hours = data.frame(table(fulltimecut$hour_cut))
 comp_hours$Var1 = as.integer(comp_hours$Var1)
 names(comp_hours) = c('hours', 'count')
@@ -100,6 +102,43 @@ ggplot(data = exclaimtweets) +
 
 
 
+
+##### HASHTAGS ##### 
+tweetstb = tbl_df(tweets)
+# tweetstb = tweetstb %>%
+#   filter(!grepl('^RT', Tweet_Text)) # if you need to get rid of retweets, but throws up warnings
+hash = paste(tweetstb$Hashtags, collapse = ';')
+hash = unlist(strsplit(hash, ';+'))
+hashdf = tbl_df(table(hash)) %>% arrange(-n) %>% filter(n > 50)
+
+tweetstb %>%
+  select(Hashtags, Retweets) %>%
+  arrange(-Retweets) %>%
+  filter(Hashtags %in% hashdf[,1]) %>%
+  # group_by(Hashtags) %>%
+  head(10)
+  # apply(x = hashdf$hash, MARGIN = 1, FUN = function(x) filter(tweetstb, grepl(x, Hashtags))) %>%
+  # filter(grepl(hashdf[1,1], Hashtags)) %>%
+  # summarise(x1 = sum(Retweets))
+
+
+
+tweets %>%
+  select(Hashtags, Retweets) %>%
+  # filter(Hashtags != '') %>%
+  # filter(grepl('MAGA', Hashtags)) %>%
+  arrange(-Retweets) %>%
+  filter(Retweets < 100000) %>%
+  # head(10)
+  summarise(withMAGA = sum(grepl('MAGA', Hashtags)),
+            onlyMAGA = sum(grepl('^MAGA$', Hashtags)),
+            noMAGA = sum(!grepl('MAGA', Hashtags)),
+            RTwithMAGA = sum(grep('MAGA', Hashtags)),
+            RTonlyMAGA = sum(grep('^MAGA$', Hashtags)),
+            RTnoMAGA = sum(grep('MAGA', Hashtags, invert = T)),
+            perWithMAGA = RTwithMAGA / withMAGA,
+            perOnlyMAGA = RTonlyMAGA / onlyMAGA,
+            perNoMAGA = RTnoMAGA / noMAGA)
 
 ##### OBSERVATIONS #####
 
