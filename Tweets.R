@@ -1,3 +1,4 @@
+##### SET UP #####
 # Data Crunching #
 library(tidyverse) # does this not include dplyr???
 library(lubridate)
@@ -11,10 +12,37 @@ clean_plot =  theme(axis.line = element_line(colour = "blue"), panel.grid.major 
 
 tweets = read.csv('TrumpTweets.csv', stringsAsFactors = F)
 
-# tweets$Date = ymd(tweets$Date)
-# tweets$Time = strptime(tweets$Time, format = '%H:%M:%S')
-# tweets$Time = hms(tweets$Time)
 
+##### HOURLY TWEETS EXPERIMENTING #####
+test2 = tweets[,c(1:3,9,10)]
+test2$hour_cat = cut(test$Time, breaks = 'hours', labels = F)
+names(test2)[4] = 'Favorites'
+
+test2_data = test2 %>%
+  group_by(hour_cat) %>%
+  summarise('count' = n(),
+            'total_rt' = sum(Retweets)/1000000,
+            'total_fav' = sum(Favorites)/1000000,
+            'tweet_effect' = sum(Retweets/count))
+
+# plotting retweets on volume of tweets per hour
+ggplot(data = test2_data) +
+  geom_rect(aes(xmin = 0.5, xmax = 7, ymin=0, ymax=Inf), alpha = 1, fill = 'grey') +
+  geom_rect(aes(xmin = 19, xmax = 24.5, ymin=0, ymax=Inf), alpha = 1, fill = 'grey') +
+  geom_line(aes(x = hour_cat, y = count, color = total_rt), size = 2) +
+  scale_color_continuous(low = 'blue', high = 'orange', name = 'Retweets (millions)') +
+  labs(x = 'Hours of the Day', y = 'Number of Tweets', title = 'Volume and Popularity of Tweets') +
+  clean_plot
+
+ggplot(data = test2_data) +
+  geom_rect(aes(xmin = 0.5, xmax = 7, ymin=0, ymax=Inf), alpha = 1, fill = 'grey') +
+  geom_rect(aes(xmin = 19, xmax = 24.5, ymin=0, ymax=Inf), alpha = 1, fill = 'grey') +
+  geom_line(aes(x = hour_cat, y = tweet_effect), color = 'slateblue1', size = 2) +
+  labs(x = 'Hour of the Day', y = 'Retweets per Tweet', title = 'Effectiveness of Tweets') +
+  clean_plot
+
+
+##### MONTHLY TWEET EXPERIMENTING #####
 test = tweets[,c(1:3)]
 test$dt = paste(test$Date, test$Time)
 test$dt = strptime(test$dt, format = '%y-%m-%d %H:%M:%S')
@@ -55,27 +83,13 @@ ggplot() +
   geom_bar(data = fulltimecut, aes(x = hour_cut, fill = Months)) +
   labs(x = 'Hours', y = 'Count', title = 'Trump Tweets each Hour by Month') +
   clean_plot
- 
+
 comp_hours = data.frame(table(fulltimecut$hour_cut))
 comp_hours$Var1 = as.integer(comp_hours$Var1)
 names(comp_hours) = c('hours', 'count')
 comp_hours2 = merge(comp_hours, fulltimecut[,c('hour_cut', 'month_cut')], by.x = 'hours', by.y = 'hour_cut',
                     all = T)
 
-# first plot of tweets per hour, hopefully will get month variations soon
-ggplot() +
-  geom_rect(aes(xmin = 0, xmax = 7, ymin=-Inf, ymax=Inf), alpha = .1, fill = 'grey') +
-  geom_rect(aes(xmin = 19, xmax = 24, ymin=-Inf, ymax=Inf), alpha = .1, fill = 'grey') +
-  geom_line(data = hours, aes(x = hour, y = count), color = 'blue') +
-  # geom_line(aes(x = hour, y = count), color = 'blue', size = 1) +
-  labs(x = 'Hour', y = 'Number of Tweets', title = 'Tweets by Hour') +
-  clean_plot
-
-
-# seeing what hour Trump tweets at.
-ggplot(data = tweets[1:1000,]) +
-  geom_point(aes(x = Date, y = Retweets)) +
-  clean_plot
 
 ##### EXCLAMATION POINTS #####
 
@@ -98,9 +112,6 @@ names(exclaimtweets) = c('text', 'count', 'retweets')
 ggplot(data = exclaimtweets) +
   geom_point(aes(x = count, y = retweets)) +
   clean_plot
-
-
-
 
 
 ##### HASHTAGS ##### 
@@ -148,4 +159,13 @@ tweets %>%
 
 # It also looks like sometimes Trump retweeted people who used an awful amount of exclamation points,
 # and that showed up as one of his tweets.
+
+# It's confirmed that Favorites and Retweets can be proxies for each other. They're very closely correlated 
+# (Adj R^2 is 0.8815)
+
+
+##### TODO #####
+# look at increase of effectiveness of tweets per time
+# look at hourly rate of tweets with exlcamation points
+# collect tweets with rtweet and do some simple analysis following up this stuff.
 
