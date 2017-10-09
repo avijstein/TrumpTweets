@@ -7,15 +7,15 @@ output: html_notebook
 library(tidyverse)
 ```
 
-##### Since they make the news almost every day, it seemed worth poking around the infamous Trump tweets. This data set was pulled from [r/datasets](https://www.reddit.com/r/datasets/comments/5czkdz/7375_donald_trump_tweets_in_excel_and_csv/). It contains 7,375 tweets from Trump, covering a range of time from a month after announcing his candidacy until election day.
+##### Since they make the news almost every day, it seemed worth poking around the infamous Trump tweets. This data set was pulled from [r/datasets](https://www.reddit.com/r/datasets/comments/5czkdz/7375_donald_trump_tweets_in_excel_and_csv/). It contains 7,375 tweets from Trump, starting from a month after announcing his candidacy until election day.
 
 ### Data Set
 
-```{R echo = F}
-head(tweets[,c('Date','Time', 'Hashtags', 'Retweets')])
-```
+The data set includes dates and times for each tweet, the text contained, any hashtags used, and the number of retweets and favorites. This provided a great sandbox for experimenting with different data tools and to hunt for trends. When looking for trends, I used retweets as a proxy for popularity of tweets. Retweets and Favorites are very closely correlated (Adjusted $R^2$ = 0.8815). A sample of the dataset below:
 
-The data set includes dates and times for each tweet, the text contained, any hashtags used, and the number of retweets and favorites. This provided a great sandbox for experimenting with different data tools and to hunt for trends. When looking for trends, I used retweets as a proxy for popularity of tweets. Retweets and Favorites are very closely correlated (Adjusted $R^2$ = 0.8815). 
+```{R echo = F}
+tweets[8:13,c('Date','Time', 'Hashtags', 'Retweets')]
+```
 
 ### Hourly Trends
 
@@ -76,7 +76,7 @@ ggplot(data = boxtable, aes(x = fake_month, y = fake_hour)) +
   clean_plot
 ```
 
-**Retweets through Time**:  We see the general trend of increased retweeting as time progresses, without a distinct time of day in which it occurs. It is also important to note that retweets do not have to occur at the same time as the tweet, so many 3am tweets are probably retweeted later in the morning when people wake up and check their phones. The vast majority of the retweeting/favoriting/etc occurs within 24 hours of the tweet, so I'm not concerned of missing data because it hasn't been retweeted yet.
+**Retweets through Time**:  We see the general trend of increased retweeting as time progresses, without a distinct time of day in which it occurs. It is also important to note that retweets do not have to occur at the same time as the tweet, so many 3am tweets are probably retweeted later in the morning when people wake up and check their phones. The vast majority of the retweeting/favoriting/etc occurs within 24 hours of the tweet, so I'm not concerned about missing data because it hasn't been retweeted yet.
 
 ### Exclamation Points!
 
@@ -154,19 +154,6 @@ ggplot(data = eff_hash) +
 
 Wrapping up, I didn't find a whole lot of eye-opening trends, but there is still so much more to be done with this dataset. I have, up until this point, only been focused on metadata analysis, and holding off on delving into the content of the tweets themselves, which would be a major area of expansion. Following up on this project, I would use sentiment analysis to gain understanding of motivations of these tweets. I would also integrate dates/times of important events to look for correlations between the two (e.g. Trump tweeting about Fox&Friends during its air time). 
 
-In addition, I would like to add more tweets to this collection, using the Twitter REST API. My first line of inquires would be to see if the patterns we see in his sleep cycle and retweetiness continue throughout the next year. 
+In addition, I would like to add more tweets to this collection, using the Twitter REST API. My first line of inquiries would be to see if the patterns we see in his sleep cycle and retweetiness continue throughout the next year. 
 
 This is a great dataset to work with because it has so much going on in it, and I look forward to continue working with it!
-
-
-
-
-
-
-
-
-
-
-
-
-
