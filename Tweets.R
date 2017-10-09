@@ -1,6 +1,5 @@
 ##### SET UP #####
 library(tidyverse)
-library(lubridate)
 library(dplyr)
 library(ggplot2)
 library(scales)
@@ -81,8 +80,8 @@ boxtable = boxtable %>%
 
 # filling in missing values.
 filler = data.frame(fake_month = sort(rep(seq(1:17), 24)),
-                    fake_hour = rep(seq(1:24), 17),
-                    joinpoint = paste(filler$fake_month, filler$fake_hour))
+                    fake_hour = rep(seq(1:24), 17))
+filler$joinpoint = paste(filler$fake_month, filler$fake_hour)
 
 boxtable = boxtable %>%
   right_join(filler, by = 'joinpoint')
@@ -267,4 +266,3 @@ ggplot(data = eff_hash) +
 
 ##### TODO #####
 # collect tweets with rtweet and do some simple analysis following up this stuff.
-
