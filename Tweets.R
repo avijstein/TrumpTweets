@@ -1,9 +1,9 @@
 ##### SET UP #####
-# Data Crunching #
-library(tidyverse) # does this not include dplyr???
+library(tidyverse)
 library(lubridate)
 library(dplyr)
 library(ggplot2)
+library(scales)
 
 clean_plot =  theme(axis.line = element_line(colour = "blue"), panel.grid.major = element_blank(),
                     panel.grid.minor = element_blank(), panel.border = element_blank(),
@@ -11,92 +11,103 @@ clean_plot =  theme(axis.line = element_line(colour = "blue"), panel.grid.major 
 
 
 tweets = read.csv('TrumpTweets.csv', stringsAsFactors = F)
-
+names(tweets)[9] = 'Favorites'
 
 ##### HOURLY TWEETS EXPERIMENTING #####
-test2 = tweets[,c(1:3,9,10)]
-test2$hour_cat = cut(test$Time, breaks = 'hours', labels = F)
-names(test2)[4] = 'Favorites'
+# setting the data into the time intervals I want them in.
+newtweets = tweets[,c(1:3,9,10)]
+newtweets$Time = strptime(newtweets$Time, format = '%H:%M:%S')
+newtweets$Date = strptime(newtweets$Date, format = '%y-%m-%d')
+newtweets$hour_cat = cut(newtweets$Time, breaks = 'hours', labels = F)
+newtweets$month_cat = cut(newtweets$Date, breaks = 'months', labels = F)
 
-test2_data = test2 %>%
+# summary table of tweet data.
+newtweets_data = newtweets %>%
+  select(-Time, -Date) %>%
   group_by(hour_cat) %>%
   summarise('count' = n(),
             'total_rt' = sum(Retweets)/1000000,
             'total_fav' = sum(Favorites)/1000000,
             'tweet_effect' = sum(Retweets/count))
 
-# plotting retweets on volume of tweets per hour
-ggplot(data = test2_data) +
-  geom_rect(aes(xmin = 0.5, xmax = 7, ymin=0, ymax=Inf), alpha = 1, fill = 'grey') +
-  geom_rect(aes(xmin = 19, xmax = 24.5, ymin=0, ymax=Inf), alpha = 1, fill = 'grey') +
-  geom_line(aes(x = hour_cat, y = count, color = total_rt), size = 2) +
-  scale_color_continuous(low = 'blue', high = 'orange', name = 'Retweets (millions)') +
-  labs(x = 'Hours of the Day', y = 'Number of Tweets', title = 'Volume and Popularity of Tweets') +
+# plotting tweets per hour.
+ggplot(data = newtweets_data) +
+  geom_rect(aes(xmin = 0.5, xmax = 7, ymin=0, ymax=Inf), fill = 'grey') +
+  geom_rect(aes(xmin = 19, xmax = 24.5, ymin=0, ymax=Inf), fill = 'grey') +
+  geom_line(aes(x = hour_cat, y = count), color = 'slateblue1', size = 2) +
+  labs(x = 'Hours of the Day', y = 'Number of Tweets', title = 'Hourly Preference of Tweets') +
   clean_plot
 
-ggplot(data = test2_data) +
-  geom_rect(aes(xmin = 0.5, xmax = 7, ymin=0, ymax=Inf), alpha = 1, fill = 'grey') +
-  geom_rect(aes(xmin = 19, xmax = 24.5, ymin=0, ymax=Inf), alpha = 1, fill = 'grey') +
+# plotting effectiveness of tweets hourly.
+ggplot(data = newtweets_data) +
+  geom_rect(aes(xmin = 0.5, xmax = 7, ymin=0, ymax=Inf), fill = 'grey') +
+  geom_rect(aes(xmin = 19, xmax = 24.5, ymin=0, ymax=Inf), fill = 'grey') +
   geom_line(aes(x = hour_cat, y = tweet_effect), color = 'slateblue1', size = 2) +
   labs(x = 'Hour of the Day', y = 'Retweets per Tweet', title = 'Effectiveness of Tweets') +
   clean_plot
 
+clout = newtweets %>%
+  select(-Time, -Date) %>%
+  group_by(month_cat) %>%
+  summarize('count' = n(),
+            'total_rt' = sum(Retweets)/1000000,
+            'total_fav' = sum(Favorites)/1000000,
+            'tweet_effect' = sum(Retweets/count)/1000)
 
-##### MONTHLY TWEET EXPERIMENTING #####
-test = tweets[,c(1:3)]
-test$dt = paste(test$Date, test$Time)
-test$dt = strptime(test$dt, format = '%y-%m-%d %H:%M:%S')
-test$Time = strptime(test$Time, format = '%H:%M:%S')
-test$month_cut = cut(test$dt, breaks = 'month', labels = F)
-test$hour_cut = NA
-# test$hour_cut = cut(test$Time, breaks = 'hour') # this is so wrong, it's setting it to today's date
-# test$hour_cut = as.Date(test$hour_cut, format = '%y-%m-%d %H:%M:%S')
-
-# I need to find a dplyr method or apply method for this process because for loops are pretty weak.
-fulltimecut = data.frame()
-for (i in unique(test$month_cut)){
-  if (is.na(i)){next}
-  print(i)
-  hold = test[test$month_cut == i, c('Time', 'dt', 'month_cut', 'hour_cut')]
-  hold$hour_cut = cut(hold$Time, breaks = 'hour', labels = F)
-  fulltimecut = rbind(fulltimecut, hold)
-}
-
-# I don't know why, but this process is converting some values to NAs. I'm dropping them to get preliminary
-# results, but I'll need to come back and figure this out.
-fulltimecut = fulltimecut[!is.na(fulltimecut$hour_cut),]
-
-comptimecut = data.frame()
-for (i in unique(fulltimecut$month_cut)){
-  hold = data.frame(table(fulltimecut[fulltimecut$month_cut == i,]$hour_cut))
-  hold$Var1 = as.integer(hold$Var1)
-  names(hold) = c('hours', 'count')
-  hold$month = i
-  comptimecut = rbind(comptimecut, hold)
-}
-
-Months = factor(fulltimecut$month_cut)
-# okay, got a plot breaking it down by month, but it's not that descriptive. It's kinda there.
-ggplot() +
-  geom_rect(aes(xmin = 0.5, xmax = 7, ymin=0, ymax=Inf), alpha = 1, fill = 'grey') +
-  geom_rect(aes(xmin = 19, xmax = 24.5, ymin=0, ymax=Inf), alpha = 1, fill = 'grey') +
-  geom_bar(data = fulltimecut, aes(x = hour_cut, fill = Months)) +
-  labs(x = 'Hours', y = 'Count', title = 'Trump Tweets each Hour by Month') +
+# retweetiness over time.
+ggplot(data = clout) +
+  geom_line(aes(x = month_cat, y = tweet_effect), size = 2, color = 'slateblue1') +
+  labs(x='Months Since Campaign Start', y = 'Retweets per Tweet (thousands)', title = 'Retweetiness over Time') +
   clean_plot
 
-comp_hours = data.frame(table(fulltimecut$hour_cut))
-comp_hours$Var1 = as.integer(comp_hours$Var1)
-names(comp_hours) = c('hours', 'count')
-comp_hours2 = merge(comp_hours, fulltimecut[,c('hour_cut', 'month_cut')], by.x = 'hours', by.y = 'hour_cut',
-                    all = T)
+
+##### MONTHLY TWEET EXPERIMENTING #####
+# categorizing month and hour data.
+boxtable = tweets %>%
+  filter(Retweets < 100000) %>%
+  select(Date, Time, Favorites, Retweets) %>%
+  mutate(newDate = as.Date(Date, format = '%y-%m-%d')) %>%
+  mutate(dateCut = cut(newDate, breaks = 'month', labels = F))
+boxtable$newTime = strptime(boxtable$Time, format = '%H:%M:%S')
+boxtable$timeCut = cut(boxtable$newTime, breaks = 'hours', labels = F)  
+
+# creating frequencies of monthly/hourly tweets/retweets.
+boxtable = boxtable %>% 
+  select(-newTime, -newDate) %>%
+  mutate(joinpoint = paste(dateCut, timeCut)) %>%
+  group_by(dateCut, timeCut, joinpoint) %>%
+  summarise('count' = n(),
+            'retweets' = mean(Retweets))
+
+# filling in missing values.
+filler = data.frame(fake_month = sort(rep(seq(1:17), 24)),
+                    fake_hour = rep(seq(1:24), 17),
+                    joinpoint = paste(filler$fake_month, filler$fake_hour))
+
+boxtable = boxtable %>%
+  right_join(filler, by = 'joinpoint')
+
+
+# tweets through time
+ggplot(data = boxtable, aes(x = fake_month, y = fake_hour)) +
+  geom_tile(aes(fill = rescale(count))) +
+  scale_fill_gradient(name = 'Tweet Density', low = 'blue', high = 'orange') +
+  labs(x='Months Since Campaign Start', y = 'Hours of the Day', title = 'Tweets through Time') +
+  clean_plot
+
+# retweets through time
+ggplot(data = boxtable, aes(x = fake_month, y = fake_hour)) +
+  geom_tile(aes(fill = rescale(retweets))) +
+  scale_fill_gradient(name = 'Retweet Density', low = 'blue', high = 'orange') +
+  labs(x='Months Since Campaign Start', y = 'Hours of the Day', title = 'Retweets through Time') +
+  clean_plot
 
 
 ##### EXCLAMATION POINTS #####
 
-# grepping for exclamation points
+# grepping for exclamation points, unlisting while hunting for null values and subset values proved difficult. 
 exclaim = (gregexpr(pattern = "!", text = tweets$Tweet_Text))
 numexclaim = c()
-# because I'm python trash and use for loops as defaults. learn dplyr, geez.
 for (i in 1:length(exclaim)){
   if (sum(exclaim[[i]]) == -1){
     numexclaim[i] = 0
@@ -105,51 +116,127 @@ for (i in 1:length(exclaim)){
   }
 }
 
-exclaimtweets = data.frame(tweets$Tweet_Text[1:length(exclaim)], numexclaim, tweets$Retweets[1:length(exclaim)])
-names(exclaimtweets) = c('text', 'count', 'retweets')
+# putting them into a dataframe.
+exclaimtweets = data.frame('text' = tweets$Tweet_Text, 'count' = numexclaim, 'time' = as.character(tweets$Time),
+                           'retweets' = tweets$Retweets, stringsAsFactors = F)
 
-# graphing the number of retweets against the number of exclamation points in the tweet.
-ggplot(data = exclaimtweets) +
-  geom_point(aes(x = count, y = retweets)) +
+# formatting date and time, then creating a summary table.
+exclaimtweets$time = strptime(exclaimtweets$time, format = '%H:%M:%S')
+exclaimtweets$hour_cat = cut(exclaimtweets$time, breaks = 'hours', labels = F)
+extb = exclaimtweets %>% 
+  select(-time) %>%
+  group_by(hour_cat) %>%
+  summarise('class' = 'exclaim',
+            'count' = sum(count))
+
+# combining with the table for all tweets.
+extb = rbind(extb, data.frame('hour_cat' = newtweets_data$hour_cat,
+                        'class' = rep('All Tweets', nrow(newtweets_data)), stringsAsFactors = F,
+                        'count' = newtweets_data$count))
+
+# plotting exclamation points hourly preferences.
+ggplot(data = extb) +
+  geom_line(aes(x = hour_cat, y = count, color = factor(class)), size = 2) +
+  labs(x = 'Hours of the Day', y = 'Normalized Count', title = 'Hourly Exclamations!') +
+  scale_color_manual(name = 'Groups', values = c('slateblue1', 'orange'), labels=c('All Tweets','Exclamations Points'))+
   clean_plot
 
 
 ##### HASHTAGS ##### 
-tweetstb = tbl_df(tweets)
-# tweetstb = tweetstb %>%
-#   filter(!grepl('^RT', Tweet_Text)) # if you need to get rid of retweets, but throws up warnings
+
+# duplicating so I don't destroy it.
+tweetstb = tweets
+
+# finding most popular hashtags from the hashtag list.
 hash = paste(tweetstb$Hashtags, collapse = ';')
 hash = unlist(strsplit(hash, ';+'))
 hashdf = tbl_df(table(hash)) %>% arrange(-n) %>% filter(n > 50)
 
-tweetstb %>%
-  select(Hashtags, Retweets) %>%
-  arrange(-Retweets) %>%
-  filter(Hashtags %in% hashdf[,1]) %>%
-  # group_by(Hashtags) %>%
-  head(10)
-  # apply(x = hashdf$hash, MARGIN = 1, FUN = function(x) filter(tweetstb, grepl(x, Hashtags))) %>%
-  # filter(grepl(hashdf[1,1], Hashtags)) %>%
-  # summarise(x1 = sum(Retweets))
+
+# fetching values for the top hashtags.
+tophash = data.frame()
+for (i in 1:nrow(hashdf)){
+  print(hashdf$hash[i])
+  x = tweetstb %>%
+    filter(grepl(pattern = hashdf$hash[i], Hashtags))
+  x$Time = strptime(x$Time, format = '%H:%M:%S')
+  x$hour_cat = cut(x$Time, breaks = 'hours', labels = F)
+  hash1 = tbl_df(table(x$hour_cat)) %>% transmute('hashtag' = hashdf$hash[i],'hour_cat' = as.numeric(Var1), 'count' = n)
+  tophash = rbind(tophash, hash1)
+}
+
+# taking only the columns we want and joining them with the table for all tweets. 
+tophash = tophash %>% filter(hashtag %in% c('Trump2016','MakeAmericaGreatAgain'))
+tophash = rbind(tophash, 
+          data.frame('hashtag' = rep('All Tweets', nrow(newtweets_data)), stringsAsFactors = F,
+                     'hour_cat' = newtweets_data$hour_cat,
+                     'count' = newtweets_data$count/10))
+
+# Hourly hashtags preference.
+ggplot(data = tophash) +
+  geom_line(aes(x = hour_cat, y = count, color = factor(hashtag)), size = 2) +
+  labs(x = 'Hours of the Day', y = 'Count', title = 'Hourly Hashtag Preference') +
+  scale_color_discrete(name = 'Hashtags', labels = c('(1/10 of All Hashtags)', '#MakeAmericaGreatAgain', '#Trump2016'))+
+  clean_plot
+
+# finding the midpoint of when each of the popular tweets took off, to normalize against retweetiness.
+middate = tweetstb %>%
+  filter(grepl(pattern = hashdf$hash[i], Hashtags)) %>%
+  select(Hashtags, Retweets, Date) %>%
+  mutate(newdate = as.Date(Date, format = '%y-%m-%d'))
+middate = middate %>%
+  summarise('meantime' = mean(middate$newdate))
+
+
+# calculating the average retweets on tweets with certain hashtags.
+eff_hash = data.frame()
+for (i in 1:nrow(hashdf)){
+  print(hashdf$hash[i])
+  middate = tweetstb %>%
+    filter(grepl(pattern = hashdf$hash[i], Hashtags)) %>%
+    select(Hashtags, Retweets, Date) %>%
+    mutate(newdate = as.Date(Date, format = '%y-%m-%d'))
+  out = middate %>%
+    summarise('hashtag' = paste0('#', hashdf$hash[i]),
+              'count' = n(),
+              'avg_rt' = mean(Retweets),
+              'meantime' = mean(middate$newdate))
+  eff_hash = rbind(eff_hash, out)
+  middate = tweetstb %>%
+    filter(!grepl(pattern = hashdf$hash[i], Hashtags)) %>%
+    select(Hashtags, Retweets, Date) %>%
+    mutate(newdate = as.Date(Date, format = '%y-%m-%d'))
+  out = middate %>%
+    summarise('hashtag' = paste0('#', hashdf$hash[i]),
+              'count' = n(),
+              'avg_rt' = mean(Retweets),
+              'meantime' = mean(middate$newdate))
+  eff_hash = rbind(eff_hash, out)
+}
+
+# normalizing for increased retweetibility over time.
+eff_hash$presence = seq(1,0)
+eff_hash$midpoint = round(as.numeric(difftime(eff_hash$meantime, min(as.Date(newtweets$Date)), units = 'weeks')/4))
+eff_hash = merge(eff_hash, clout[,c(1,5)], by.x = 'midpoint', by.y = 'month_cat', all.x = T)
+eff_hash$norm = eff_hash$avg_rt / eff_hash$tweet_effect
+
+# Impact of Hashtag on Retweet Potential / Normalization
+ggplot(data = eff_hash) +
+  geom_point(aes(x = hashtag, y = avg_rt, color = factor(presence)), size = 3) +
+  labs(x='Hashtag', y = 'Average Retweet', title = 'Hashtag Impact on Retweet Potential') +
+  ylim(0,12000) +
+  scale_color_manual(name = 'Present', labels = c('No', 'Yes'), values = c('slateblue1', 'orange')) +
+  clean_plot
+
+ggplot(data = eff_hash) +
+  geom_point(aes(x = hashtag, y = norm, color = factor(presence)), size = 4) +
+  labs(x='Hashtag', y = 'Normalized Average Retweet', title = 'Normalized Hashtag Impact on Retweet Potential') +
+  ylim(0,12000) +
+  scale_color_manual(name = 'Present', labels = c('No', 'Yes'), values = c('slateblue1', 'orange')) +
+  clean_plot
 
 
 
-tweets %>%
-  select(Hashtags, Retweets) %>%
-  # filter(Hashtags != '') %>%
-  # filter(grepl('MAGA', Hashtags)) %>%
-  arrange(-Retweets) %>%
-  filter(Retweets < 100000) %>%
-  # head(10)
-  summarise(withMAGA = sum(grepl('MAGA', Hashtags)),
-            onlyMAGA = sum(grepl('^MAGA$', Hashtags)),
-            noMAGA = sum(!grepl('MAGA', Hashtags)),
-            RTwithMAGA = sum(grep('MAGA', Hashtags)),
-            RTonlyMAGA = sum(grep('^MAGA$', Hashtags)),
-            RTnoMAGA = sum(grep('MAGA', Hashtags, invert = T)),
-            perWithMAGA = RTwithMAGA / withMAGA,
-            perOnlyMAGA = RTonlyMAGA / onlyMAGA,
-            perNoMAGA = RTnoMAGA / noMAGA)
 
 ##### OBSERVATIONS #####
 
@@ -163,9 +250,21 @@ tweets %>%
 # It's confirmed that Favorites and Retweets can be proxies for each other. They're very closely correlated 
 # (Adj R^2 is 0.8815)
 
+# Separating his tweets from him weirdly quoting tweets and him retweeting people is more difficult than I thought.
+# So, I'm using the assumption that when he retweets something that uses #MAGA or "I love Trump!!!!" it's because 
+# he's willing to highlight this tweet, even if he's not writing it himself.
+
+# With this in mind, he tweets or retweets exclamation marks with no real hourly preference that's different than the 
+# normal flow of tweets.
+
+# There is also no significant trend for his most popular hashtags (and the less popular ones don't have enough
+# to show trends yet).
+
+# Effects of using top hashtags on retweets: could be influenced by time in campaign it was tweeted. Use retweetiness
+# to normalize it. In fact, it is. There may be other factors at play here, but the tweetiness is the biggest player
+# for sure.
+
 
 ##### TODO #####
-# look at increase of effectiveness of tweets per time
-# look at hourly rate of tweets with exlcamation points
 # collect tweets with rtweet and do some simple analysis following up this stuff.
 
