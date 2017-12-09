@@ -1,10 +1,26 @@
 ---
 title: "TrumpTweets"
-output: html_notebook
+output:
+  github_document:
+    fig_height: 7
+    fig_width: 10
+  html_notebook: default
 ---
 
 ```{R include=F}
 library(tidyverse)
+library(scales)
+tweets = read_csv('DataForMD/tweets.csv')
+clean_plot =  theme(axis.line = element_line(colour = "blue"), panel.grid.major = element_blank(),
+                    panel.grid.minor = element_blank(), panel.border = element_blank(),
+                    panel.background = element_blank(), legend.key = element_blank())
+newtweets_data = read_csv('DataForMD/newtweets_data.csv')
+clout = read_csv('DataForMD/clout.csv')
+boxtable = read_csv('DataForMD/boxtable.csv')
+extb = read_csv('DataForMD/extb.csv')
+hashdf = read_csv('DataForMD/hashdf.csv')
+tophash = read_csv('DataForMD/tophash.csv')
+eff_hash = read_csv('DataForMD/eff_hash.csv')
 ```
 
 ##### Since they make the news almost every day, it seemed worth poking around the infamous Trump tweets. This data set was pulled from [r/datasets](https://www.reddit.com/r/datasets/comments/5czkdz/7375_donald_trump_tweets_in_excel_and_csv/). It contains 7,375 tweets from Trump, starting from a month after announcing his candidacy until election day.
@@ -14,6 +30,7 @@ library(tidyverse)
 The data set includes dates and times for each tweet, the text contained, any hashtags used, and the number of retweets and favorites. This provided a great sandbox for experimenting with different data tools and to hunt for trends. When looking for trends, I used retweets as a proxy for popularity of tweets. Retweets and Favorites are very closely correlated (Adjusted $R^2$ = 0.8815). A sample of the dataset below:
 
 ```{R echo = F}
+tweets = as.data.frame(tweets)
 tweets[8:13,c('Date','Time', 'Hashtags', 'Retweets')]
 ```
 
@@ -103,6 +120,7 @@ One of my favorite parts of Twitter (as an observer, not a user), is the use of 
 With this in mind, I tracked down the top hashtags used by Trump during this period of time. They are: 
 
 ```{R echo = F}
+hashdf = as.data.frame(hashdf)
 names(hashdf) = c('Hashtag','Count')
 hashdf
 ```
