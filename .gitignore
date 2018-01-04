@@ -32,3 +32,8 @@ vignettes/*.pdf
 *.utf8.md
 *.knit.md
 .Rproj.user
+
+# Unnecessary Rmd and html files
+.Rmd
+.html
+
